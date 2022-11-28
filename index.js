@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion } = require('mongodb');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const port = process.env.PORT || 5000;
 const app = express();
@@ -41,7 +42,6 @@ async function run() {
         const usersCollection = client.db('mobileReSale').collection('users');
 
 
-
         const verifyAdmin = async (req, res, next) => {
             const decodedEmail = req.decoded.email;
             const query = { email: decodedEmail };
@@ -52,8 +52,7 @@ async function run() {
             }
 
             next();
-        }
-
+        };
 
 
 
@@ -71,13 +70,14 @@ async function run() {
             const user = await usersCollection.findOne(query);
 
             if (user) {
-                const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, { expiresIn: '1h' })
+                const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, { expiresIn: "10h" })
                 return res.send({ accessToken: token });
             }
 
             console.log(user);
             res.status(403).send({ accessToken: '' })
         });
+
 
         app.get('/users', async (req, res) => {
             const query = {};
@@ -113,6 +113,47 @@ async function run() {
             const result = await usersCollection.updateOne(filter, updatedDoc, options);
             res.send(result);
         });
+
+
+        app.get('/buyers', async (req, res) => {
+            const query = { role: 'buyer' };
+            const buyers = await usersCollection.find(query).toArray();
+            res.send(buyers);
+
+        })
+        app.get('/sellers', async (req, res) => {
+            const query = { role: 'seller' };
+            const buyers = await usersCollection.find(query).toArray();
+            res.send(buyers);
+
+        })
+
+
+        // app.get('/myproducts', async (req, res) => {
+        //     const query = { email: email };
+        //     const buyers = await usersCollection.find(query).toArray();
+        //     res.send(buyers);
+
+        // });
+
+
+        app.get('/myproducts', async (req, res) => {
+            const email = req.query.email;
+            const query = { email };
+            const products = await productsCollection.find(query);
+            res.send(products);
+        })
+
+
+
+        app.post('/products', verifyJWT, async (req, res) => {
+            const product = req.body;
+            const result = await productsCollection.insertOne(product);
+            res.send(result);
+        });
+
+
+
     }
     finally {
 
